@@ -78,7 +78,7 @@ function showPane(name) {
 }
 
 function hidePanes() {
-  for (let x of "generate transfer buy register".split(" ")) {
+  for (let x of "generate transfer buy register claim".split(" ")) {
     try {
       enable(`${x}-link`)
       hide(`${x}-pane`)

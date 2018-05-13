@@ -20,6 +20,7 @@ let dayFor = timestamp => timestamp < startTime ? 0
 
 let state = {
   buyWindow: dayFor(getTime()),
+  claimDay: 0
 }
 
 let balanceOf = async (token, address) => web3.toBigNumber(hex(await call({
@@ -129,13 +130,22 @@ let refresh = () => new Promise(resolve => async.parallel(Object.assign({
     return i < dayFor(time) && !x.claimed
   }).reduce((a, x) => x.received.plus(a), web3.toBigNumber(0))
 
+  let unclaimedDays = days.reduce((ud, x, i) => {
+    if (i < dayFor(time) && !x.received.equals(0) && !x.claimed) {
+      ud.push(i)
+    }
+    return ud
+  }, [])
+
+  let claimDay = Number(unclaimedDays[0])
+
   resolve(update({
-    time, days, unclaimed, eth_balance, eos_balance, publicKey
+    time, days, unclaimed, unclaimedDays, claimDay, eth_balance, eos_balance, publicKey
   }))
 })))
 
 let render = ({
-  time, days, unclaimed, eth_balance, eos_balance, publicKey, buyWindow,
+  time, days, unclaimed, unclaimedDays, claimDay, eth_balance, eos_balance, publicKey, buyWindow
 }) => <div>
   <p className="hidden" style={{ width: "95%" }}>
 
@@ -253,21 +263,17 @@ let render = ({
                style={{ marginLeft: "1rem" }}
           >
             { unclaimed.equals(0) &&
-              <a href="#" id="claim-button" className="disabled"
+              <a href="#" id="claim-link" className="disabled"
                  onClick={event => event.preventDefault()}>
                 Claim EOS tokens
               </a>
             }
             { !unclaimed.equals(0) &&
-              <a href="#" id="claim-button"
-                 onClick={event => (event.preventDefault(), claim())}>
+              <a href="#" id="claim-link"
+                 onClick={event => (event.preventDefault(), showPane('claim'))}>
                 Claim EOS tokens
               </a>
             }
-            <a href="#" id="claim-progress" className="disabled hidden"
-               onClick={event => event.preventDefault()}>
-              Claiming tokens...
-            </a>
           </div>
         </div>
       </div>
@@ -467,6 +473,31 @@ let render = ({
         </tr>
       </tbody></table>
     </form>
+    <form className="hidden pane" id="claim-pane"
+          onSubmit={event => (event.preventDefault(), claim())}>
+      <h3>Claim EOS tokens</h3>
+      <table><tbody>
+        <tr>
+          <th>Distribution period</th>
+          <td style={{ textAlign: "left" }}>
+            <select id="claim-day" value={claimDay}
+                    onChange={e => update({ claimDay: e.target.value })}>
+              {unclaimedDays.map((i) => <option key={i} value={i}>
+                Period #{i}
+              </option>)}
+            </select>
+            <span style={{ marginLeft: "1.5rem" }}>
+              <button id="claim-button">
+                Claim EOS tokens
+              </button>
+              <span id="claim-progress" className="hidden">
+                Claiming tokens...
+              </span>
+            </span>
+          </td>
+        </tr>
+      </tbody></table>
+    </form>
     <div className="sales pane">
       <table style={{ width: "100%" }}>
         <thead>
@@ -535,11 +566,9 @@ function buy() {
 
 function claim() {
   byId("claim-button").classList.add("hidden")
-  disable("claim-button")
   byId("claim-progress").classList.remove("hidden")
-  eos_sale.claimAll({
-    gas: 2000000,
-  }, hopefully(result => ping(result).then(() => {
+  eos_sale.claim(state.claimDay, hopefully(result => ping(result).then(() => {
+    hidePanes()
     byId("claim-button").classList.remove("hidden")
     byId("claim-progress").classList.add("hidden")
   })))
