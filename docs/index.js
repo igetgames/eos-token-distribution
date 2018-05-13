@@ -31,16 +31,16 @@ let getDailyTotals = async () => words32(await call({
 })).map(web3.toBigNumber)
 
 let getUserBuys = async address => words32(await call({
-  to: EOS_SALE_UTIL, data: calldata(sighash("userBuys()"), address),
+  to: EOS_SALE_UTIL, data: calldata(sighash("userBuys(address)"), address),
 })).map(web3.toBigNumber)
 
 let getUserClaims = async address => words32(await call({
-  to: EOS_SALE_UTIL, data: calldata(sighash("userClaims()"), address),
+  to: EOS_SALE_UTIL, data: calldata(sighash("userClaims(address)"), address),
 })).map(Number).map(Boolean)
 
 let getKey = async address => bytes(
   words32(await call({
-    to: EOS_SALE, data: calldata(sighash("keys(address)"))
+    to: EOS_SALE, data: calldata(sighash("keys(address)"), address)
   })).slice(2).map(unhex).join("").replace(/(00)*$/, "")
 ).map(Number).map(String.fromCharCode).join("")
 
